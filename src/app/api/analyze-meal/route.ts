@@ -17,38 +17,40 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini', // Modelo mais rápido e econômico
       messages: [
         {
           role: 'user',
           content: [
             {
               type: 'text',
-              text: `Analise esta imagem de refeição e forneça as seguintes informações em formato JSON:
+              text: `Analise rapidamente esta refeição e retorne JSON:
               
               {
-                "ingredients": ["lista de todos os alimentos identificados"],
-                "calories": número total estimado de calorias,
+                "ingredients": ["lista de alimentos"],
+                "calories": número total de calorias,
                 "macros": {
-                  "carbs": gramas de carboidratos,
-                  "protein": gramas de proteína,
-                  "fat": gramas de gordura
+                  "carbs": gramas,
+                  "protein": gramas,
+                  "fat": gramas
                 },
-                "healthierSuggestion": "uma sugestão de versão mais saudável desta refeição"
+                "healthierSuggestion": "sugestão breve"
               }
               
-              Seja preciso e realista nas estimativas. Se não conseguir identificar algo claramente, faça uma estimativa conservadora.`,
+              Seja rápido e direto.`,
             },
             {
               type: 'image_url',
               image_url: {
                 url: imageUrl,
+                detail: 'low', // Processamento mais rápido
               },
             },
           ],
         },
       ],
-      max_tokens: 1000,
+      max_tokens: 500, // Reduzido para resposta mais rápida
+      temperature: 0.3, // Mais determinístico e rápido
       response_format: { type: 'json_object' },
     });
 
