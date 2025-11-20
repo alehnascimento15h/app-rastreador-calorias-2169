@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, Upload, X, Loader2, Check } from 'lucide-react';
@@ -37,6 +37,13 @@ export default function MealPhotoDialog({
       reader.readAsDataURL(file);
     }
   };
+
+  // Análise automática quando a imagem é carregada
+  useEffect(() => {
+    if (selectedImage && !result && !analyzing) {
+      analyzeMeal();
+    }
+  }, [selectedImage]);
 
   const analyzeMeal = async () => {
     if (!selectedImage) return;
@@ -139,7 +146,7 @@ export default function MealPhotoDialog({
               </Button>
 
               <div className="text-center text-white/60 text-sm">
-                Tire uma foto clara da sua refeição para análise precisa
+                Tire uma foto clara da sua refeição para análise automática com IA
               </div>
             </div>
           ) : (
@@ -157,28 +164,34 @@ export default function MealPhotoDialog({
                 >
                   <X className="w-5 h-5" />
                 </button>
+                
+                {/* Badge de análise automática */}
+                {analyzing && (
+                  <div className="absolute bottom-2 left-2 bg-gradient-to-r from-[#00D9FF] to-[#00FF88] text-black px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Analisando com IA...
+                  </div>
+                )}
               </div>
-
-              {!result && !analyzing && (
-                <Button
-                  onClick={analyzeMeal}
-                  className="w-full bg-gradient-to-r from-[#00D9FF] to-[#00FF88] hover:from-[#00FF88] hover:to-[#00D9FF] text-black font-bold py-6"
-                >
-                  <Camera className="w-5 h-5 mr-2" />
-                  Analisar com IA
-                </Button>
-              )}
 
               {analyzing && (
                 <div className="text-center py-8">
                   <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-[#00FF88]" />
-                  <p className="text-white font-semibold">Analisando sua refeição...</p>
-                  <p className="text-white/60 text-sm">Identificando alimentos e calculando calorias</p>
+                  <p className="text-white font-semibold">Analisando sua refeição automaticamente...</p>
+                  <p className="text-white/60 text-sm">Identificando alimentos e calculando calorias com IA</p>
                 </div>
               )}
 
               {result && (
                 <div className="space-y-4">
+                  {/* Badge de sucesso */}
+                  <div className="bg-gradient-to-r from-[#00FF88]/20 to-[#00D9FF]/20 border border-[#00FF88]/50 rounded-xl p-3 text-center">
+                    <p className="text-[#00FF88] font-semibold text-sm flex items-center justify-center gap-2">
+                      <Check className="w-4 h-4" />
+                      Análise completa! Alimentos e calorias identificados
+                    </p>
+                  </div>
+
                   {/* Calorias totais */}
                   <div className="bg-gradient-to-r from-[#00D9FF]/20 to-[#00FF88]/20 border border-[#00FF88]/30 rounded-2xl p-6 text-center">
                     <p className="text-white/60 text-sm mb-2">Calorias Totais</p>
@@ -205,7 +218,7 @@ export default function MealPhotoDialog({
                   {/* Ingredientes */}
                   {result.ingredients && result.ingredients.length > 0 && (
                     <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                      <p className="text-white/60 text-sm mb-2">🍽️ Alimentos Identificados:</p>
+                      <p className="text-white/60 text-sm mb-2">🍽️ Alimentos Identificados pela IA:</p>
                       <div className="flex flex-wrap gap-2">
                         {result.ingredients.map((ingredient: string, index: number) => (
                           <span

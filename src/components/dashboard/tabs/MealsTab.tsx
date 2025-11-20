@@ -5,19 +5,19 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getTranslation } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Camera, Coffee, Salad, Utensils, Cookie } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useUser } from '@/contexts/UserContext';
 import MealPhotoDialog from '../MealPhotoDialog';
+import { getTodayMeals } from '@/lib/supabase/database';
 
 interface Meal {
   id: string;
-  type: string;
+  meal_type: string;
   calories: number;
-  carbs?: number;
-  protein?: number;
-  fat?: number;
-  ingredients?: string[];
-  healthier_suggestion?: string;
+  carbs?: number | null;
+  protein?: number | null;
+  fat?: number | null;
+  ingredients?: string[] | null;
+  healthier_suggestion?: string | null;
   timestamp: string;
 }
 
@@ -25,7 +25,6 @@ export default function MealsTab() {
   const { language } = useLanguage();
   const { user } = useUser();
   const t = (key: string) => getTranslation(language, key as any);
-  const supabase = createClientComponentClient();
 
   const [meals, setMeals] = useState<Meal[]>([]);
   const [showMealDialog, setShowMealDialog] = useState(false);
@@ -35,17 +34,7 @@ export default function MealsTab() {
     if (!user) return;
 
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const { data, error } = await supabase
-        .from('meals')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('timestamp', today.toISOString())
-        .order('timestamp', { ascending: false });
-
-      if (error) throw error;
+      const data = await getTodayMeals(user.id);
       setMeals(data || []);
     } catch (error) {
       console.error('Error loading meals:', error);
@@ -67,7 +56,7 @@ export default function MealsTab() {
   };
 
   const getMealsByType = (type: string) => {
-    return meals.filter(meal => meal.type === type);
+    return meals.filter(meal => meal.meal_type === type);
   };
 
   const getTotalCaloriesByType = (type: string) => {
@@ -143,11 +132,15 @@ export default function MealsTab() {
             <div key={meal.id} className="bg-white/5 border border-white/10 rounded-2xl p-4">
               <div className="flex items-start gap-4">
                 <div className="p-3 rounded-xl bg-gradient-to-br from-[#00D9FF]/20 to-[#00FF88]/20">
-                  {getMealIcon(meal.type)}
+                  {getMealIcon(meal.meal_type)}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-white font-semibold capitalize">{meal.type}</h4>
+                    <h4 className="text-white font-semibold capitalize">
+                      {meal.meal_type === 'breakfast' ? 'Café da Manhã' : 
+                       meal.meal_type === 'lunch' ? 'Almoço' :
+                       meal.meal_type === 'dinner' ? 'Jantar' : 'Lanche'}
+                    </h4>
                     <p className="text-white/60 text-sm">
                       {new Date(meal.timestamp).toLocaleTimeString(language === 'pt' ? 'pt-BR' : 'en-US', {
                         hour: '2-digit',

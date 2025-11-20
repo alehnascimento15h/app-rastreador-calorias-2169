@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useUser } from '@/contexts/UserContext';
 import { getTranslation, languages, Language } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { User as UserIcon, Mail, Calendar, Scale, Target, Dumbbell, Globe, Bell, Crown, LogOut, Edit2, Check, X } from 'lucide-react';
+import { User as UserIcon, Mail, Calendar, Scale, Target, Dumbbell, Globe, Bell, LogOut, Edit2, Check, X } from 'lucide-react';
+import { getProfile, updateProfile } from '@/lib/supabase/database';
+import { supabase } from '@/lib/supabase/client';
 
 export default function ProfileTab() {
   const { language, setLanguage } = useLanguage();
@@ -16,11 +17,27 @@ export default function ProfileTab() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState(user);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    if (editedUser) {
+  const handleSave = async () => {
+    if (!editedUser || !user) return;
+
+    setSaving(true);
+    try {
+      await updateProfile(user.id, {
+        name: editedUser.name,
+        birthdate: editedUser.birthdate,
+        current_weight: editedUser.currentWeight,
+        desired_weight: editedUser.desiredWeight,
+      });
+
       setUser(editedUser);
       setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Erro ao salvar perfil. Tente novamente.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -29,9 +46,9 @@ export default function ProfileTab() {
     setIsEditing(false);
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    window.location.reload();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
   };
 
   return (
@@ -120,10 +137,17 @@ export default function ProfileTab() {
           <div className="flex gap-3 mt-6">
             <Button
               onClick={handleSave}
+              disabled={saving}
               className="flex-1 bg-gradient-to-r from-[#00D9FF] to-[#00FF88] hover:from-[#00FF88] hover:to-[#00D9FF] text-black font-bold"
             >
-              <Check className="w-4 h-4 mr-2" />
-              Salvar
+              {saving ? (
+                <>Salvando...</>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  Salvar
+                </>
+              )}
             </Button>
             <Button
               onClick={handleCancel}
