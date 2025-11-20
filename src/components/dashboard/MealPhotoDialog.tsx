@@ -4,8 +4,8 @@ import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, Upload, X, Loader2, Check } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useUser } from '@/contexts/UserContext';
+import { createMeal } from '@/lib/supabase/database';
 
 interface MealPhotoDialogProps {
   open: boolean;
@@ -26,7 +26,6 @@ export default function MealPhotoDialog({
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
-  const supabase = createClientComponentClient();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,9 +73,10 @@ export default function MealPhotoDialog({
 
     setSaving(true);
     try {
-      const { error } = await supabase.from('meals').insert({
+      await createMeal({
         user_id: user.id,
-        type: mealType || 'snack',
+        meal_type: mealType || 'snack',
+        food_name: result.ingredients?.join(', ') || 'Refeição',
         calories: result.calories,
         carbs: result.macros.carbs,
         protein: result.macros.protein,
@@ -84,10 +84,9 @@ export default function MealPhotoDialog({
         ingredients: result.ingredients,
         image_url: selectedImage,
         healthier_suggestion: result.healthierSuggestion,
+        meal_date: new Date().toISOString().split('T')[0],
         timestamp: new Date().toISOString(),
       });
-
-      if (error) throw error;
 
       // Fechar dialog e notificar
       onOpenChange(false);

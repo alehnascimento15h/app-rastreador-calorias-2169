@@ -6,17 +6,17 @@ import { useUser } from '@/contexts/UserContext';
 import { getTranslation } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Camera, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import MealPhotoDialog from '../MealPhotoDialog';
+import { getTodayMeals } from '@/lib/supabase/database';
 
 interface Meal {
   id: string;
-  type: string;
+  meal_type: string;
   calories: number;
-  carbs?: number;
-  protein?: number;
-  fat?: number;
-  ingredients?: string[];
+  carbs?: number | null;
+  protein?: number | null;
+  fat?: number | null;
+  ingredients?: string[] | null;
   timestamp: string;
 }
 
@@ -24,7 +24,6 @@ export default function HomeTab() {
   const { language } = useLanguage();
   const { user } = useUser();
   const t = (key: string) => getTranslation(language, key as any);
-  const supabase = createClientComponentClient();
 
   const [todayMeals, setTodayMeals] = useState<Meal[]>([]);
   const [caloriesConsumed, setCaloriesConsumed] = useState(0);
@@ -35,20 +34,10 @@ export default function HomeTab() {
     if (!user) return;
 
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const { data, error } = await supabase
-        .from('meals')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('timestamp', today.toISOString())
-        .order('timestamp', { ascending: false });
-
-      if (error) throw error;
-
-      setTodayMeals(data || []);
-      const total = (data || []).reduce((sum: number, meal: Meal) => sum + meal.calories, 0);
+      setLoading(true);
+      const meals = await getTodayMeals(user.id);
+      setTodayMeals(meals || []);
+      const total = (meals || []).reduce((sum: number, meal: Meal) => sum + meal.calories, 0);
       setCaloriesConsumed(total);
     } catch (error) {
       console.error('Error loading meals:', error);
@@ -75,6 +64,16 @@ export default function HomeTab() {
     if (remaining > 0) return <TrendingUp className="w-5 h-5" />;
     if (remaining === 0) return <Minus className="w-5 h-5" />;
     return <TrendingDown className="w-5 h-5" />;
+  };
+
+  const getMealTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      breakfast: 'Café da Manhã',
+      lunch: 'Almoço',
+      dinner: 'Jantar',
+      snack: 'Lanche',
+    };
+    return labels[type] || type;
   };
 
   return (
@@ -181,7 +180,7 @@ export default function HomeTab() {
             <div key={meal.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-white font-semibold capitalize">{meal.type}</p>
+                  <p className="text-white font-semibold capitalize">{getMealTypeLabel(meal.meal_type)}</p>
                   <p className="text-white/60 text-sm">
                     {new Date(meal.timestamp).toLocaleTimeString(language === 'pt' ? 'pt-BR' : 'en-US', { 
                       hour: '2-digit', 
