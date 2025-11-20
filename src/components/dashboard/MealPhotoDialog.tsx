@@ -82,17 +82,12 @@ export default function MealPhotoDialog({
     try {
       await createMeal({
         user_id: user.id,
-        meal_type: mealType || 'snack',
-        food_name: result.ingredients?.join(', ') || 'Refeição',
-        calories: result.calories,
-        carbs: result.macros.carbs,
-        protein: result.macros.protein,
-        fat: result.macros.fat,
-        ingredients: result.ingredients,
-        image_url: selectedImage,
-        healthier_suggestion: result.healthierSuggestion,
-        meal_date: new Date().toISOString().split('T')[0],
         timestamp: new Date().toISOString(),
+        image_url: selectedImage,
+        total_calories: result.calories,
+        total_protein: result.macros.protein,
+        total_carbs: result.macros.carbs,
+        total_fat: result.macros.fat,
       });
 
       // Fechar dialog e notificar

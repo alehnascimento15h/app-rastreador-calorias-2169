@@ -56,8 +56,15 @@ export async function getMeals(userId: string, date?: Date) {
     .order('timestamp', { ascending: false });
 
   if (date) {
-    const dateStr = date.toISOString().split('T')[0];
-    query = query.eq('meal_date', dateStr);
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    query = query
+      .gte('timestamp', startOfDay.toISOString())
+      .lte('timestamp', endOfDay.toISOString());
   }
 
   const { data, error } = await query;
@@ -68,17 +75,7 @@ export async function getMeals(userId: string, date?: Date) {
 
 export async function getTodayMeals(userId: string) {
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const { data, error } = await supabase
-    .from('meals')
-    .select('*')
-    .eq('user_id', userId)
-    .gte('timestamp', today.toISOString())
-    .order('timestamp', { ascending: false });
-
-  if (error) throw error;
-  return data;
+  return getMeals(userId, today);
 }
 
 export async function createMeal(meal: MealInsert) {
@@ -92,28 +89,10 @@ export async function createMeal(meal: MealInsert) {
   
   // Atualizar progresso diário
   if (data) {
-    await updateDailyProgress(meal.user_id, new Date(meal.meal_date || new Date()));
+    const mealDate = new Date(meal.timestamp);
+    await updateDailyProgress(meal.user_id, mealDate);
   }
 
-  return data;
-}
-
-export async function getMealsByType(userId: string, mealType: string, date?: Date) {
-  let query = supabase
-    .from('meals')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('meal_type', mealType)
-    .order('timestamp', { ascending: false });
-
-  if (date) {
-    const dateStr = date.toISOString().split('T')[0];
-    query = query.eq('meal_date', dateStr);
-  }
-
-  const { data, error } = await query;
-
-  if (error) throw error;
   return data;
 }
 
@@ -137,24 +116,35 @@ export async function updateDailyProgress(userId: string, date: Date) {
   const dateStr = date.toISOString().split('T')[0];
 
   // Buscar todas as refeições do dia
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+
   const { data: meals, error: mealsError } = await supabase
     .from('meals')
-    .select('calories, protein, carbs, fat')
+    .select('total_calories')
     .eq('user_id', userId)
-    .eq('meal_date', dateStr);
+    .gte('timestamp', startOfDay.toISOString())
+    .lte('timestamp', endOfDay.toISOString());
 
   if (mealsError) throw mealsError;
 
-  // Calcular totais
-  const totals = meals?.reduce(
-    (acc, meal) => ({
-      total_calories: acc.total_calories + (meal.calories || 0),
-      total_protein: acc.total_protein + (meal.protein || 0),
-      total_carbs: acc.total_carbs + (meal.carbs || 0),
-      total_fat: acc.total_fat + (meal.fat || 0),
-    }),
-    { total_calories: 0, total_protein: 0, total_carbs: 0, total_fat: 0 }
-  ) || { total_calories: 0, total_protein: 0, total_carbs: 0, total_fat: 0 };
+  // Calcular total de calorias
+  const totalCalories = meals?.reduce(
+    (acc, meal) => acc + (meal.total_calories || 0),
+    0
+  ) || 0;
+
+  // Buscar meta de calorias do perfil
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('daily_calorie_goal')
+    .eq('id', userId)
+    .single();
+
+  const calorieGoal = profile?.daily_calorie_goal || 2000;
 
   // Verificar se já existe progresso para o dia
   const { data: existing } = await supabase
@@ -169,7 +159,8 @@ export async function updateDailyProgress(userId: string, date: Date) {
     const { data, error } = await supabase
       .from('daily_progress')
       .update({
-        ...totals,
+        calories_consumed: totalCalories,
+        calories_goal: calorieGoal,
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId)
@@ -186,7 +177,8 @@ export async function updateDailyProgress(userId: string, date: Date) {
       .insert({
         user_id: userId,
         date: dateStr,
-        ...totals,
+        calories_consumed: totalCalories,
+        calories_goal: calorieGoal,
       })
       .select()
       .single();

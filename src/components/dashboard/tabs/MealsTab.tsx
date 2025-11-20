@@ -11,14 +11,14 @@ import { getTodayMeals } from '@/lib/supabase/database';
 
 interface Meal {
   id: string;
-  meal_type: string;
-  calories: number;
-  carbs?: number | null;
-  protein?: number | null;
-  fat?: number | null;
-  ingredients?: string[] | null;
-  healthier_suggestion?: string | null;
+  user_id: string;
   timestamp: string;
+  image_url: string | null;
+  total_calories: number;
+  total_protein: number | null;
+  total_carbs: number | null;
+  total_fat: number | null;
+  created_at: string;
 }
 
 export default function MealsTab() {
@@ -45,22 +45,39 @@ export default function MealsTab() {
     loadMeals();
   }, [user]);
 
-  const getMealIcon = (type: string) => {
+  const getMealIcon = (timestamp: string) => {
+    const hour = new Date(timestamp).getHours();
+    if (hour >= 5 && hour < 11) return <Coffee className="w-6 h-6" />;
+    if (hour >= 11 && hour < 15) return <Utensils className="w-6 h-6" />;
+    if (hour >= 15 && hour < 19) return <Cookie className="w-6 h-6" />;
+    return <Salad className="w-6 h-6" />;
+  };
+
+  const getMealType = (timestamp: string) => {
+    const hour = new Date(timestamp).getHours();
+    if (hour >= 5 && hour < 11) return 'breakfast';
+    if (hour >= 11 && hour < 15) return 'lunch';
+    if (hour >= 15 && hour < 19) return 'snack';
+    return 'dinner';
+  };
+
+  const getMealTypeLabel = (timestamp: string) => {
+    const type = getMealType(timestamp);
     switch (type) {
-      case 'breakfast': return <Coffee className="w-6 h-6" />;
-      case 'lunch': return <Utensils className="w-6 h-6" />;
-      case 'dinner': return <Salad className="w-6 h-6" />;
-      case 'snack': return <Cookie className="w-6 h-6" />;
-      default: return <Utensils className="w-6 h-6" />;
+      case 'breakfast': return 'Café da Manhã';
+      case 'lunch': return 'Almoço';
+      case 'snack': return 'Lanche';
+      case 'dinner': return 'Jantar';
+      default: return 'Refeição';
     }
   };
 
   const getMealsByType = (type: string) => {
-    return meals.filter(meal => meal.meal_type === type);
+    return meals.filter(meal => getMealType(meal.timestamp) === type);
   };
 
   const getTotalCaloriesByType = (type: string) => {
-    return getMealsByType(type).reduce((sum, meal) => sum + meal.calories, 0);
+    return getMealsByType(type).reduce((sum, meal) => sum + meal.total_calories, 0);
   };
 
   const handleAddMeal = (type: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
@@ -132,14 +149,12 @@ export default function MealsTab() {
             <div key={meal.id} className="bg-white/5 border border-white/10 rounded-2xl p-4">
               <div className="flex items-start gap-4">
                 <div className="p-3 rounded-xl bg-gradient-to-br from-[#00D9FF]/20 to-[#00FF88]/20">
-                  {getMealIcon(meal.meal_type)}
+                  {getMealIcon(meal.timestamp)}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-white font-semibold capitalize">
-                      {meal.meal_type === 'breakfast' ? 'Café da Manhã' : 
-                       meal.meal_type === 'lunch' ? 'Almoço' :
-                       meal.meal_type === 'dinner' ? 'Jantar' : 'Lanche'}
+                      {getMealTypeLabel(meal.timestamp)}
                     </h4>
                     <p className="text-white/60 text-sm">
                       {new Date(meal.timestamp).toLocaleTimeString(language === 'pt' ? 'pt-BR' : 'en-US', {
@@ -151,38 +166,24 @@ export default function MealsTab() {
                   
                   <div className="flex items-center gap-4 mb-3">
                     <div className="bg-[#00FF88]/20 px-3 py-1 rounded-lg">
-                      <p className="text-[#00FF88] font-bold">{meal.calories} kcal</p>
+                      <p className="text-[#00FF88] font-bold">{meal.total_calories} kcal</p>
                     </div>
                   </div>
 
-                  {meal.carbs !== undefined && meal.protein !== undefined && meal.fat !== undefined && (
+                  {meal.total_carbs !== null && meal.total_protein !== null && meal.total_fat !== null && (
                     <div className="grid grid-cols-3 gap-3">
                       <div className="bg-white/5 rounded-lg p-2 text-center">
                         <p className="text-white/60 text-xs">Carbs</p>
-                        <p className="text-white font-semibold">{meal.carbs}g</p>
+                        <p className="text-white font-semibold">{Math.round(meal.total_carbs)}g</p>
                       </div>
                       <div className="bg-white/5 rounded-lg p-2 text-center">
                         <p className="text-white/60 text-xs">Proteína</p>
-                        <p className="text-white font-semibold">{meal.protein}g</p>
+                        <p className="text-white font-semibold">{Math.round(meal.total_protein)}g</p>
                       </div>
                       <div className="bg-white/5 rounded-lg p-2 text-center">
                         <p className="text-white/60 text-xs">Gordura</p>
-                        <p className="text-white font-semibold">{meal.fat}g</p>
+                        <p className="text-white font-semibold">{Math.round(meal.total_fat)}g</p>
                       </div>
-                    </div>
-                  )}
-
-                  {meal.ingredients && meal.ingredients.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-white/10">
-                      <p className="text-white/60 text-xs mb-1">Ingredientes detectados:</p>
-                      <p className="text-white/80 text-sm">{meal.ingredients.join(', ')}</p>
-                    </div>
-                  )}
-
-                  {meal.healthier_suggestion && (
-                    <div className="mt-3 bg-gradient-to-r from-[#00D9FF]/10 to-[#00FF88]/10 border border-[#00FF88]/30 rounded-lg p-3">
-                      <p className="text-white/60 text-xs mb-1">💡 Sugestão mais saudável:</p>
-                      <p className="text-white/90 text-sm">{meal.healthier_suggestion}</p>
                     </div>
                   )}
                 </div>

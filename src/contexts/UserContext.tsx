@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { UserProfile } from '@/lib/types';
 import { supabase } from '@/lib/supabase/client';
 import { getProfile, createProfile } from '@/lib/supabase/database';
+import { useRouter } from 'next/navigation';
 
 interface UserContextType {
   user: UserProfile | null;
@@ -19,12 +20,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<UserProfile | null>(null);
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     // Verificar sessão do Supabase
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        // Se houver erro de autenticação, limpar estado
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          setUserState(null);
+          setIsOnboarded(false);
+          setLoading(false);
+          return;
+        }
         
         if (session?.user) {
           // Buscar perfil do usuário
@@ -71,12 +82,24 @@ export function UserProvider({ children }: { children: ReactNode }) {
               setUserState(userProfile);
               setIsOnboarded(false);
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error('Error loading profile:', error);
+            
+            // Se erro de autenticação, limpar estado
+            if (error?.message?.includes('Auth') || error?.message?.includes('session') || error?.message?.includes('JWT')) {
+              setUserState(null);
+              setIsOnboarded(false);
+            }
           }
+        } else {
+          // Sem sessão ativa
+          setUserState(null);
+          setIsOnboarded(false);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error checking session:', error);
+        setUserState(null);
+        setIsOnboarded(false);
       } finally {
         setLoading(false);
       }
@@ -91,13 +114,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
       } else if (event === 'SIGNED_OUT') {
         setUserState(null);
         setIsOnboarded(false);
+        router.push('/');
+      } else if (event === 'TOKEN_REFRESHED') {
+        checkSession();
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   const setUser = (user: UserProfile | null) => {
     setUserState(user);

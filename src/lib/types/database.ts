@@ -63,43 +63,34 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack'
-          food_name: string
-          calories: number
-          protein: number | null
-          carbs: number | null
-          fat: number | null
+          timestamp: string
           image_url: string | null
-          notes: string | null
-          meal_date: string
+          total_calories: number
+          total_protein: number | null
+          total_carbs: number | null
+          total_fat: number | null
           created_at: string
         }
         Insert: {
           id?: string
           user_id: string
-          meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack'
-          food_name: string
-          calories: number
-          protein?: number | null
-          carbs?: number | null
-          fat?: number | null
+          timestamp: string
           image_url?: string | null
-          notes?: string | null
-          meal_date?: string
+          total_calories: number
+          total_protein?: number | null
+          total_carbs?: number | null
+          total_fat?: number | null
           created_at?: string
         }
         Update: {
           id?: string
           user_id?: string
-          meal_type?: 'breakfast' | 'lunch' | 'dinner' | 'snack'
-          food_name?: string
-          calories?: number
-          protein?: number | null
-          carbs?: number | null
-          fat?: number | null
+          timestamp?: string
           image_url?: string | null
-          notes?: string | null
-          meal_date?: string
+          total_calories?: number
+          total_protein?: number | null
+          total_carbs?: number | null
+          total_fat?: number | null
           created_at?: string
         }
       }
@@ -108,27 +99,17 @@ export interface Database {
           id: string
           user_id: string
           date: string
-          total_calories: number
-          total_protein: number
-          total_carbs: number
-          total_fat: number
-          weight: number | null
-          water_intake: number
-          workouts_completed: number
+          calories_consumed: number
+          calories_goal: number
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           user_id: string
-          date?: string
-          total_calories?: number
-          total_protein?: number
-          total_carbs?: number
-          total_fat?: number
-          weight?: number | null
-          water_intake?: number
-          workouts_completed?: number
+          date: string
+          calories_consumed?: number
+          calories_goal: number
           created_at?: string
           updated_at?: string
         }
@@ -136,13 +117,8 @@ export interface Database {
           id?: string
           user_id?: string
           date?: string
-          total_calories?: number
-          total_protein?: number
-          total_carbs?: number
-          total_fat?: number
-          weight?: number | null
-          water_intake?: number
-          workouts_completed?: number
+          calories_consumed?: number
+          calories_goal?: number
           created_at?: string
           updated_at?: string
         }
